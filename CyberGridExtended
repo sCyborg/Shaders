@@ -1,0 +1,92 @@
+﻿Shader "Unlit/Cyber Signal Extended 0.01"
+{
+    Properties
+    {
+    [Header(Main)]
+        _MainTex ("Texture", 2D) = "white" {}
+        [Space]
+        [Header(Color and Emmision)]
+        [HDR]_Color ("Color", Color) = (1,1,1,1)
+        _EmissionRate("EmissionRate",Range(0,2)) = 1.5
+        _BigLineEmmision("Fat Line Emmision",Range(0,10))=4.4
+        [Space]
+        [Header(Alpha)]
+        _BaseAlpha("BaseAlpha",Range(0,1)) = 0.15
+        _LineAlpha("LineAlpha",Range(0,1)) = 0.66
+        [Space]
+        [Header(FatLine Control)]
+        _FractureTimeScale("Fat line Spike Travel Speed",Range(-100,100))=7.5
+        _BigLineSpeed("Fat Line Speed",Range(-50,50))=1
+        _BigLineEmStr("Fat Line Wave Width",Range(0,1))=0.005
+        _WaveWidth("Fat Line Scale",Range(-10,10))=1.68
+        _UVValueRate("Flat Line Waviness 2",Range(0,250))=54
+        
+    }
+    SubShader
+    {
+        Tags{ "Queue" = "Transparent" "LightMode"="ForwardBase"}
+        LOD 100
+
+        Pass
+        {
+                    ZWrite On
+			Blend SrcAlpha OneMinusSrcAlpha
+            CGPROGRAM
+
+            #pragma vertex vert
+            #pragma fragment frag
+            // make fog work
+            #pragma multi_compile_fog
+
+            #include "UnityCG.cginc"
+
+            struct appdata
+            {
+                float4 vertex : POSITION;
+                float2 uv : TEXCOORD0;
+            };
+
+            struct v2f
+            {
+                float4 pos : TEXCOORD1;
+                float4 vertex : SV_POSITION;
+            };
+
+            sampler2D _MainTex;
+            float4 _MainTex_ST;
+            float4 _Color;
+            
+            float _LineAlpha;
+            float _BaseAlpha;
+            
+            float _EmissionRate;
+            float _UVValueRate;
+            float _FractureTimeScale;
+            float _BigLineSpeed;
+            float _BigLineEmmision;
+            float _WaveWidth;
+            float _BigLineEmStr;
+
+            v2f vert (appdata v)
+            {
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.pos = v.vertex;
+                return o;
+            }
+
+            fixed4 frag (v2f i) : SV_Target
+            {
+                fixed4 color;
+                float3 pos = i.pos;
+                float2 uv = float2(atan2((pos.x),(pos.z)),pos.y);
+                uv.x += frac(uv.y * 1. - _Time.x * _FractureTimeScale) < 0.04 ? sin(uv.y * _UVValueRate) * 0.02 : sin(uv.y * _UVValueRate + _Time.x) * 0.0025 * sin(_Time.y);
+                color.xyz = _Color.xyz;
+                color.w = (min(frac(uv.x * 8. + _Time.y),frac(uv.y * 8.- _Time.y * 2.)) < 0.075) ? _LineAlpha : _BaseAlpha;
+                color.w *= frac(uv.x * _WaveWidth - _Time.x * _BigLineSpeed) < _BigLineEmStr ? _BigLineEmmision : 1.0;
+                return color * (1. + _EmissionRate);
+            }
+            ENDCG
+        }
+    }
+}
